@@ -1,0 +1,422 @@
+ 
+	//------------
+		function getDoc(){
+			//---------获取iframe的document对象---------------
+			var iframeWindow = parent.window.frames["area"];
+			var doc = iframeWindow.contentDocument || iframeWindow.document;
+			return doc;
+		}
+		function log( msg){
+			var debug=true;
+			if(debug)
+				console.log(msg);
+		}
+		function varIsNull( str){
+			if( typeof(str) == 'undefined' || str==null || str=='null'|| str=='')
+				return 'true';
+			else
+				return 'false';
+		}
+		function getUserName(){
+			var doc =  getDoc();
+			var userStr ="";
+			var target = doc.getElementsByClassName("greeting-label")[0];
+			if(typeof(target)!='undefined'){
+				userStr = target.getElementsByTagName("span")[0].innerHTML;
+				user = userStr.substring(5);
+				log("greeting-label ="+target);
+				log("userStr ="+userStr);
+				log("user ="+user);
+			}else
+				log("not found greeting-label.");
+		}
+		 function IsLoginPage(){
+			//wait();
+			var doc =  getDoc();
+			var title = doc.getElementsByTagName('title')[0];
+			//alert(title.innerHTML.substring(2,0));
+			if(title.innerHTML.substring(2,0)=='首页'){
+				return  "true";
+			}
+		 }
+		 /*
+		  function checkIsPortal2(){
+			//wait();
+			var doc =  getDoc();
+			var target = doc.getElementsByClassName("top-bar-cells")[0];
+			if(typeof(target) == 'undefined'){
+				log(target);
+				log('is not a portal');
+				return 'is not a portal';
+			} 
+		 }
+		 function sleep(n) {//n表示的毫秒数
+             var start = new Date().getTime();
+             while (true){
+				            if (new Date().getTime() - start > n) 
+					            break;
+			            }
+             }
+		function wait(){
+			 return;
+			var doc =  getDoc();
+			var title = doc.getElementsByTagName('title')[0];
+			
+			if(title.innerHTML=='Yonghong'){
+				log(title.innerHTML);
+				var target = doc.getElementsByClassName("top-bar-cells")[0];
+				if(typeof(target) == 'undefined') {
+					for(var i =0 ;i<30 ; i++){
+						log('wait 1 second...');
+						delay();
+						// setTimeout("log('wait')",1000); 
+						target = doc.getElementsByClassName("top-bar-cells")[0];
+						if(typeof(target) != 'undefined')
+							break;
+					}
+				}
+			}
+			 
+		}*/
+		//==****************************************************===
+		/* init parameters */
+		var server = "localhost:8080";
+		
+		//var server = "10.152.0.5:8080";
+		var takeNewToken="0";
+		var v_url ="";
+		var token ="";
+		var portal_urls = new Array();
+		var portal_names = new Array();
+		var selectedItem="";
+		var user = "";
+		var pwd = "";
+		/* init parameters */
+	//==============================================================
+		function run_asyn(callback){
+			setTimeout(function(){
+				callback();
+			},1000)
+		}
+	//==============================================================
+	function run_addMenu(){
+		var ary = sessionStorage.getItem("portal_urls");
+		portal_urls  = JSON.parse(ary)
+		portal_urls.splice(portal_urls.lenth);
+		portal_names.splice(portal_urls.lenth);
+		var selectedItem = sessionStorage.getItem("selectedItem");
+		if( varIsNull(selectedItem) == 'true'){
+			portal_urls.push("");
+			portal_names.push("");
+		}
+		
+		getToken();
+		//getUserName();
+		getPortal();
+		//log("portal_urls.length= "+portal_urls.length);
+		createMenu();
+		setSelected();
+	}
+	function setTitle(){
+		var doc = getDoc();
+		var title = doc.getElementsByTagName('title')[0].innerHTML;
+		//alert(title);
+		//document.getElementsByTagName("title")[0].innerText =title;
+		$('title').text(title);
+
+	}
+	//==============================================================
+	//**************************************************************
+	//==============================================================
+
+		function run(){
+			//console.clear();
+			setTitle();
+			if(  IsLoginPage() == "true"){
+				getAlert();
+				catchLoginClick();
+			}else{
+				run_asyn(run_addMenu);
+			}
+		}
+	//==============================================================
+	//**************************************************************
+	//==============================================================
+		
+		function catchLoginClick(){
+			sessionStorage.setItem("selectedItem",null);
+			var doc =  getDoc();
+			var btn = doc.getElementById("logBtn");
+			var pwd =  doc.getElementById("pass");
+			btn.onclick = function(){
+				 getLoginInfo();
+			}
+		
+		}
+ 	//==============================================================	
+		function getLoginInfo(){
+			log("getLoginInfo()");
+			sessionStorage.setItem("token",'');
+			/*user = sessionStorage.getItem("user");
+			pwd = sessionStorage.getItem("pwd");
+			log("user="+user+","+"pwd="+pwd);
+			
+			if(varIsNull(user)!='true' ){
+				log("user and pwd is existed.");
+				return;
+			}else
+				log("user and pwd is none.");
+				*/
+			var doc =  getDoc();
+			var _user = doc.getElementById("admin");
+			var _pwd =  doc.getElementById("pass");
+			log(_user.value);
+			log(_pwd.value);
+			user = _user.value;
+			pwd = _pwd.value;
+			sessionStorage.setItem("user",_user.value);
+			sessionStorage.setItem("pwd",_pwd.value);
+			//logout();
+		}
+		//==============================================================
+		function logout(){
+			 token= sessionStorage.getItem("token");
+			 if(varIsNull(token)!='true'){
+				 var url_logout = "http://"+server+"/bi/api?action=logout&token="+token;
+				 log("url_logout="+url_logout);
+				 $.ajax({
+				  url: url_logout ,
+				   // 请求方式
+				  async: false,
+				  type:"post",
+				  // 服务器返回的数据的格式，常用的有 text/xml/json
+				  dataType:"xml",
+				  data:{age:1212},
+				  success:function(data){
+				   // 这里获取的data就是一个xml对象，这个对象可以按照dom树格式来解析
+				   var name=$(data).find("results").find("result").each(function(){
+						logoutInfo= $(this).find("message").text();
+						log(logoutInfo);
+						 sessionStorage.setItem("token","");
+				   });
+				  },
+				  error:function(XmlHttpRequest,textStatus, errorThrown)
+						  {
+						  alert("Error of logout :"+XmlHttpRequest.responseText);
+						  }
+				 });
+			 }
+		}
+
+		function getToken(){
+			 user = sessionStorage.getItem("user");
+			 pwd = sessionStorage.getItem("pwd");
+			 token= sessionStorage.getItem("token");
+			 if(varIsNull(token)=='true' || token=='用户名或密码错误。'){
+				 var url_token = "http://"+server+"/bi/api?action=login&adminv="+user+"&passv="+pwd;
+				 log("url_token="+url_token);
+				 $.ajax({
+				  url: url_token ,
+				   // 请求方式
+				  async: false,
+				  type:"post",
+				  // 服务器返回的数据的格式，常用的有 text/xml/json
+				  dataType:"xml",
+				  data:{age:1212},
+				  success:function(data){
+				   // 这里获取的data就是一个xml对象，这个对象可以按照dom树格式来解析
+				   var name=$(data).find("results").find("result").each(function(){
+						//alert($(this).find("level").text());
+						//alert($(this).find("message").text());
+						token= $(this).find("message").text();
+						sessionStorage.setItem("token",token);
+						log(token);
+				   });
+				  },
+				  error:function(XmlHttpRequest,textStatus, errorThrown)
+						  {
+						  alert("Error of getToken :"+XmlHttpRequest.responseText);
+						  }
+				 });
+			 }else
+				 log("token exist:"+token);
+		}
+//==============================================================
+		var portal_url=""; 
+		function getPortal(){
+			if(portal_urls.length<1){
+				token= sessionStorage.getItem("token");
+				var v_url = "http://"+server+"/bi/api?action=getUserPermission&token="+token+"&xmlData=<ref><type>user</type><name>"+user+"</name></ref>";
+				log("url="+v_url);
+				 $.ajax({
+					  url:v_url,
+					   // 请求方式
+					  async: false,
+					  type:"post",
+					  dataType:"xml",// 服务器返回的数据的格式，常用的有 text/xml/json
+					  data:{age:1212},
+					  success:function(data){   // 这里获取的data就是一个xml对象，这个对象可以按照dom树格式来解析
+						  var name=$(data).find("results").find("rperm").find("ref").each(function(){
+								type= $(this).find("type").text();
+								portal= $(this).find("path").text();
+								//log(type);
+								portal_url="http://"+server+"/bi/Viewer?proc=9&req=804&resource=portalViewer&path="+portal;
+								if(type=="portal"){
+									log(portal);
+									portal_urls.push(portal_url);
+									portal_names.push(portal);
+								}
+						   });
+					  },
+				   error:function(XmlHttpRequest,textStatus, errorThrown)
+					  {
+					  alert("Error of getPortal;"+XmlHttpRequest.responseText);
+					  }
+				 });
+			}
+			sessionStorage.setItem("portal_urls",JSON.stringify( portal_urls ) );
+		}
+		//==============================================================
+
+		function selectOnChange(name,value){
+			//alert(name);
+			sessionStorage.setItem("selectedItem",name);
+			var iframeWindow = parent.window.frames["area"];
+			iframeWindow.contentWindow.location.href=value ;
+			//window.location.href=value ;//this.options[selectedIndex].value;
+		}
+		function setSelected(){
+			var doc =  getDoc();
+			var select = doc.getElementById("portalSelect");
+			var selectedItem = sessionStorage.getItem("selectedItem");
+			if( varIsNull(selectedItem) == 'true' ){
+				//alert("null");
+			//	select.options[select.options.selectedIndex].innerHTML = '门户切换';
+			}
+			else{
+				//alert(selectedItem);
+				var count = select.options.length;
+				for (var i = 0; i < count; i++) {
+					if (select.options[i].text == selectedItem) {
+						select.options[i].selected = true;
+						break;
+					}
+				}
+			}
+			//window.location.href=value ;//this.options[selectedIndex].value;
+		}
+		 //==============================================================
+		 function createMenu() {
+			// alert('O K');
+			var id = new Array(1, 2, 3, 4, 5);
+			var value = new Array("","北京", "深圳", "广州", "杭州", "西安");
+			var url = new Array("#","#", "#", "广州", "杭州", "西安");
+			//通过DOM树取得下拉列表框元素
+			//wait();
+			var doc =  getDoc();
+			var target = doc.getElementsByClassName("top-bar-cells")[0];
+			var div = doc.createElement("div");
+			div.setAttribute("style","width:95%");
+			var select = doc.createElement("select");
+			//select.length = 1;//设置每次只能选择一个
+			//select.options[0].selected = true;//设置第一个为默认选中
+			// <option value="1" style="color: #b6b6b6" disabled selected>请选择水果</option>
+			select.setAttribute("id","portalSelect");
+			select.setAttribute("style","float:right;height:23px;-webkit-border-radius:3px;margin-top:5px;");
+			select.addEventListener('change',function(){selectOnChange( this.options[this.options.selectedIndex].innerHTML, this.options[this.options.selectedIndex].value );});
+
+			for ( var x = 0; x < portal_urls.length; x++) {
+				//设置option中的内容,建立option节点
+				var option = document.createElement("option");
+				//if(x==0)
+				//{
+				//	option.appendChild(document.createTextNode("门户切换"));
+				//}else
+				{
+					var selectedItem = sessionStorage.getItem("selectedItem");
+					if( varIsNull(selectedItem) == 'true' ){
+						if(x==0)
+						{
+							option.appendChild(document.createTextNode("门户切换"));
+						}
+					}
+					option.setAttribute("value", portal_urls[x]);//设置option的属性值
+					//option.setAttribute("href", url[x]);
+					//在option元素下增加文本节点
+					option.appendChild(document.createTextNode(portal_names[x]));
+				}
+				select.appendChild(option);//在select中增加option节点
+			}
+			
+			div.appendChild(select);
+			target.appendChild(div);
+			
+		}
+
+	//==============================================================	 
+		
+		$(document).ready(function() {
+			//alert('load2');
+			var iframeWindow = parent.window.frames["area"];
+			iframeWindow.addEventListener("load", function() {
+				log('load');
+				
+				run();
+			});
+		});
+
+	/*	
+		function load(){
+			var iframeWindow = parent.window.frames["area"];
+			iframeWindow.addEventListener("load", function() {
+				run();
+			});
+		} 
+		window.addEventListener("load", function() {
+			var iframeWindow = document.getElementById("area");
+			iframeWindow.addEventListener("load", function() {
+				run();
+			});
+		});*/
+//==============================================================	
+		var alertInfo="";
+		function getAlertInfoFromUrl(){
+			 var v_url = "http://localhost:8080/alert/servlet/GetAlertInfoServlet";
+			// v_url="view-source:http://localhost:8080/bi/api?action=getUserPermission&token=140A20CEA9CCFEF79F78BA85A150C70F&xmlData=%3Cref%3E%3Ctype%3Euser%3C/type%3E%3Cname%3Efrank%3C/name%3E%3C/ref%3E";
+			log("url="+v_url);
+			 $.ajax({
+			  url:v_url,
+			   // 请求方式
+			  async: false,
+			  type:"get",
+			  dataType:"xml",// 服务器返回的数据的格式，常用的有 text/xml/json
+			  data:{age:1212},
+			  success:function(data){   // 这里获取的data就是一个xml对象，这个对象可以按照dom树格式来解析
+				 // alert(data);
+			   var name=$(data).find("result").each(function(){
+				alertInfo= $(this).find("msg").text(); 
+				log(alertInfo);
+				
+			   });
+			  },
+			   error:function(XmlHttpRequest,textStatus, errorThrown)
+				  {
+					log("Error of getAlertInfoFromUrl = "+XmlHttpRequest.responseText+' ,' + textStatus);
+					alert("Error of getAlertInfoFromUrl = "+XmlHttpRequest.responseText+' ,' + textStatus);
+				  }
+			 });
+		}
+
+	function getAlert(){
+		getAlertInfoFromUrl();
+				var errMsg =  alertInfo;
+				if (errMsg.indexOf("$$ok") != 10) {
+					swal({
+						title : "",
+						text : errMsg,//'${errMsg}',
+						imageUrl : "images/warning.png",
+						html : true,
+						showConfirmButton : true
+					});
+				}
+	}
